@@ -40,7 +40,13 @@ public class ReceiverNotifier extends AbstractStatusChangeNotifier {
         if (event instanceof ClientApplicationStatusChangedEvent) {
             logger.info("Application {} ({}) is {}", event.getApplication().getName(),
                     event.getApplication().getId(), ((ClientApplicationStatusChangedEvent) event).getTo().getStatus());
-            String text = String.format("应用:%s 服务ID:%s 下线，时间：%s", event.getApplication().getName(), event.getApplication().getId(), DateUtil.date(event.getTimestamp()));
+            String text;
+            if (event.getApplication().getStatusInfo().isUp()) {
+                text = String.format("应用:%s 服务ID:%s 上线，时间：%s", event.getApplication().getName(), event.getApplication().getId(), DateUtil.date(event.getTimestamp()));
+            } else {
+                text = String.format("应用:%s 服务ID:%s 下线，时间：%s", event.getApplication().getName(), event.getApplication().getId(), DateUtil.date(event.getTimestamp()));
+            }
+
             rabbitTemplate.convertAndSend(MqQueueConstant.SERVICE_STATUS_CHANGE,
                     new MobileMsgTemplate(String.join(",", monitorReceiverPropertiesConfig.getMobiles()),
                             text, EnumSmsChannel.ALIYUN.getName()));
@@ -61,7 +67,7 @@ public class ReceiverNotifier extends AbstractStatusChangeNotifier {
         boolean shouldNotify = false;
         if (STATUS_CHANGE.equals(event.getType())
                 && event.getApplication().getStatusInfo().isOffline()
-                || event.getApplication().getStatusInfo().isDown()) {
+                || event.getApplication().getStatusInfo().isDown() || event.getApplication().getStatusInfo().isUp()) {
             shouldNotify = true;
         }
         return shouldNotify;
